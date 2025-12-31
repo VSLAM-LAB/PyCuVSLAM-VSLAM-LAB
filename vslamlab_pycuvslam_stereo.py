@@ -22,7 +22,7 @@ def load_calibration(calibration_yaml: Path, cam_l_name: str, cam_r_name: str):
         if cam_['cam_name'] == cam_r_name:
             cam_r = cam_
     
-    cuvslam_cams, T_SC = {}, {}
+    cuvslam_cams, T_BS = {}, {}
     for cam, side in zip([cam_l, cam_r],['l', 'r']):
         print(f"\nCamera Name: {cam['cam_name']}")
         print(f"Camera Type: {cam['cam_type']}")
@@ -44,13 +44,13 @@ def load_calibration(calibration_yaml: Path, cam_l_name: str, cam_r_name: str):
         if has_dist:
             cuvslam_cams[side].distortion = distortion
             
-        T_SC[side] = np.array(cam['T_SC']).reshape(4, 4)  
+        T_BS[side] = np.array(cam['T_BS']).reshape(4, 4)  
     
     cuvslam_cams['l'].rig_from_camera = cuvslam.Pose(
         rotation=[0, 0, 0, 1],  
         translation=[0, 0, 0]
     )
-    cam1_cam0_transform =  transform_to_cam0_reference(T_SC['l'], T_SC['r'])
+    cam1_cam0_transform =  transform_to_cam0_reference(T_BS['l'], T_BS['r'])
     cuvslam_cams['r'].rig_from_camera = transform_to_pose(cam1_cam0_transform.flatten().tolist())
     return [cuvslam_cams['l'], cuvslam_cams['r']]
 

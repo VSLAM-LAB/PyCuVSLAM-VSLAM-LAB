@@ -23,7 +23,7 @@ def load_calibration(calibration_yaml: Path, cam_l_name: str, cam_r_name: str, i
         if cam_['cam_name'] == cam_r_name:
             cam_r = cam_
     
-    cuvslam_cams, T_SC = {}, {}
+    cuvslam_cams, T_BS = {}, {}
     for cam, side in zip([cam_l, cam_r],['l', 'r']):
         print(f"\nCamera Name: {cam['cam_name']}")
         print(f"Camera Type: {cam['cam_type']}")
@@ -45,13 +45,13 @@ def load_calibration(calibration_yaml: Path, cam_l_name: str, cam_r_name: str, i
         if has_dist:
             cuvslam_cams[side].distortion = distortion
                 
-        T_SC[side] = np.array(cam['T_SC']).reshape(4, 4)  
+        T_BS[side] = np.array(cam['T_BS']).reshape(4, 4)  
     
     cuvslam_cams['l'].rig_from_camera = cuvslam.Pose(
         rotation=[0, 0, 0, 1],  
         translation=[0, 0, 0]
     )
-    cam1_cam0_transform =  transform_to_cam0_reference(T_SC['l'], T_SC['r'])
+    cam1_cam0_transform =  transform_to_cam0_reference(T_BS['l'], T_BS['r'])
     cuvslam_cams['r'].rig_from_camera = transform_to_pose(cam1_cam0_transform.flatten().tolist())
 
     imus = data.get('imus', [])
@@ -60,15 +60,15 @@ def load_calibration(calibration_yaml: Path, cam_l_name: str, cam_r_name: str, i
             imu = imu_
 
     cuvslam_imu = cuvslam.ImuCalibration()
-    imu_cam0_transform = (transform_to_cam0_reference(T_SC['l'], np.array(imu['T_SC']).reshape(4, 4)) 
+    imu_cam0_transform = (transform_to_cam0_reference(T_BS['l'], np.array(imu['T_BS']).reshape(4, 4)) 
                              @ np.array([[1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]))
 
     cuvslam_imu.rig_from_imu = transform_to_pose(imu_cam0_transform.flatten().tolist())
-    cuvslam_imu.gyroscope_noise_density = imu["sigma_g_c"]
-    cuvslam_imu.gyroscope_random_walk = imu["sigma_gw_c"]
-    cuvslam_imu.accelerometer_noise_density = imu["sigma_a_c"]
-    cuvslam_imu.accelerometer_random_walk = imu["sigma_aw_c"]
-    cuvslam_imu.frequency = imu["fps"]
+    cuvslam_imu.gyroscope_noise_density = float(imu["sigma_g_c"])
+    cuvslam_imu.gyroscope_random_walk = float(imu["sigma_gw_c"])
+    cuvslam_imu.accelerometer_noise_density = float(imu["sigma_a_c"])
+    cuvslam_imu.accelerometer_random_walk = float(imu["sigma_aw_c"])
+    cuvslam_imu.frequency = float(imu["fps"])
 
     cuvslam_rig = cuvslam.Rig()
     cuvslam_rig.cameras = [cuvslam_cams['l'], cuvslam_cams['r']]
@@ -270,14 +270,14 @@ def main():
             "world/camera_0/gravity",
             rr.Arrows3D(vectors=gravity, colors=[[255, 0, 0]], radii=0.015)
         )
-
-        rr.log("world/imu/accel/x", rr.Scalar(accel_data[0]), static=False)
-        rr.log("world/imu/accel/y", rr.Scalar(accel_data[1]), static=False)
-        rr.log("world/imu/accel/z", rr.Scalar(accel_data[2]), static=False)
-
-        rr.log("world/imu/gyro/x", rr.Scalar(gyro_data[0]), static=False)
-        rr.log("world/imu/gyro/y", rr.Scalar(gyro_data[1]), static=False)
-        rr.log("world/imu/gyro/z", rr.Scalar(gyro_data[2]), static=False)
+        if accel_data and len(accel_data) >= 3:
+            rr.log("world/imu/accel/x", rr.Scalar(accel_data[0]), static=False)
+            rr.log("world/imu/accel/y", rr.Scalar(accel_data[1]), static=False)
+            rr.log("world/imu/accel/z", rr.Scalar(accel_data[2]), static=False)
+        if gyro_data and len(gyro_data) >= 3:
+            rr.log("world/imu/gyro/x", rr.Scalar(gyro_data[0]), static=False)
+            rr.log("world/imu/gyro/y", rr.Scalar(gyro_data[1]), static=False)
+            rr.log("world/imu/gyro/z", rr.Scalar(gyro_data[2]), static=False)
 
         frame_id += 1
 
